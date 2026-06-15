@@ -33,22 +33,37 @@ export default function AlertsDashboard() {
 
   return (
     <>
-      <h1 className="page-title">Alerts Dashboard</h1>
+      {/* Hero */}
+      <div className="hero">
+        <h1>Welcome to your RCM command center</h1>
+        <p>
+          AI-driven revenue cycle management — pre-checking eligibility, structuring clinical notes,
+          and learning from denials to get providers paid accurately and on time.
+        </p>
+        <div className="hero-actions">
+          <button className="btn btn-primary" onClick={() => navigate('/patients/new')}>+ Register Patient</button>
+          <button className="btn btn-ghost" onClick={() => navigate('/patients')}>View Patients</button>
+          <button className="btn btn-ghost" onClick={() => navigate('/denials')}>Denials Dashboard</button>
+        </div>
+      </div>
 
-      {/* Summary strip */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Total Patients', value: patients.length, color: 'var(--primary)' },
           { label: 'Open Alerts', value: allAlerts.length, color: 'var(--text)' },
           { label: 'High Severity', value: high, color: 'var(--danger)' },
           { label: 'Medium Severity', value: medium, color: 'var(--warning)' },
         ].map((s) => (
-          <div key={s.label} className="card" style={{ flex: 1, textAlign: 'center', marginBottom: 0 }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{s.label}</div>
+          <div key={s.label} className="stat-card">
+            <span className="stat-accent" style={{ background: s.color }} />
+            <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
+            <div className="stat-label">{s.label}</div>
           </div>
         ))}
       </div>
+
+      <h2 className="section-label" style={{ marginTop: 4 }}>Open AI Alerts</h2>
 
       {loading && <p className="empty">Loading…</p>}
 

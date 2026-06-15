@@ -33,7 +33,7 @@ export default function DenialsDashboard() {
       <h1 className="page-title">Denial Management & Learning Loop</h1>
 
       {/* Summary */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Total Claims', value: dashboard.total_claims, color: 'var(--primary)' },
           { label: 'Total Denials', value: dashboard.total_denials, color: 'var(--danger)' },
@@ -44,9 +44,10 @@ export default function DenialsDashboard() {
             color: 'var(--success)',
           },
         ].map((s) => (
-          <div key={s.label} className="card" style={{ flex: 1, textAlign: 'center', marginBottom: 0 }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{s.label}</div>
+          <div key={s.label} className="stat-card">
+            <span className="stat-accent" style={{ background: s.color }} />
+            <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
+            <div className="stat-label">{s.label}</div>
           </div>
         ))}
       </div>
