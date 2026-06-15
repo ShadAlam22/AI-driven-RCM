@@ -27,9 +27,17 @@ export default function App() {
           <NavLink to="/patients/new">New Patient</NavLink>
           <NavLink to="/patients">Patient List</NavLink>
           <SectionLabel>Brick 2 · Clinical</SectionLabel>
-          <NavLink to="/patients">Notes & Coding (per patient)</NavLink>
+          <div style={{ padding: '4px 20px 8px', fontSize: 12, color: '#7e93ab', lineHeight: 1.5 }}>
+            Per-patient — open a patient from the{' '}
+            <NavLink to="/patients" style={{ color: '#9fc0e8' }}>Patient List</NavLink>
+            , then use <em>Notes &amp; Coding</em>.
+          </div>
           <SectionLabel>Brick 3 · Denials</SectionLabel>
           <NavLink to="/denials">Denials Dashboard</NavLink>
+          <div style={{ padding: '4px 20px 8px', fontSize: 12, color: '#7e93ab', lineHeight: 1.5 }}>
+            Per-patient claims open from the{' '}
+            <NavLink to="/patients" style={{ color: '#9fc0e8' }}>Patient List</NavLink>.
+          </div>
         </nav>
       </aside>
       <main className="main">

@@ -16,22 +16,14 @@ as retrieve_similar_denials(). Today that is a structured query over Postgres;
 it can be swapped for FAISS / pgvector semantic search without touching this
 module — the AI prompt just receives a list of relevant past denials.
 """
-import os
-
+from app.llm import AIEngineUnavailable, get_structured_llm, invoke_structured
 from app.schemas import ClaimRiskAssessment, DenialParseResult
-from app.services.ai_engine import AIEngineUnavailable
+
+__all__ = ["AIEngineUnavailable", "parse_denial", "assess_denial_risk"]
 
 
 def _require_llm(structured_schema):
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        raise AIEngineUnavailable(
-            "ANTHROPIC_API_KEY is not configured — AI denial analysis is unavailable."
-        )
-    from langchain_anthropic import ChatAnthropic
-
-    llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0, api_key=api_key)
-    return llm.with_structured_output(structured_schema)
+    return get_structured_llm(structured_schema)
 
 
 # --- 1. Denial reason parser ---
@@ -86,7 +78,8 @@ def parse_denial(
         [("system", _PARSE_SYSTEM), ("user", _PARSE_USER)]
     )
     chain = prompt | structured
-    return chain.invoke(
+    return invoke_structured(
+        chain,
         {
             "cpt_code": cpt_code,
             "icd_code": icd_code or "n/a",
@@ -94,7 +87,7 @@ def parse_denial(
             "payer_name": payer_name,
             "charge_amount": charge_amount,
             "raw_reason": raw_reason,
-        }
+        },
     )
 
 
@@ -161,7 +154,8 @@ def assess_denial_risk(
         [("system", _RISK_SYSTEM), ("user", _RISK_USER)]
     )
     chain = prompt | structured
-    return chain.invoke(
+    return invoke_structured(
+        chain,
         {
             "cpt_code": cpt_code,
             "icd_code": icd_code or "n/a",
@@ -170,5 +164,5 @@ def assess_denial_risk(
             "charge_amount": charge_amount,
             "denial_count": len(historical_denials),
             "denial_history": _format_denials(historical_denials),
-        }
+        },
     )

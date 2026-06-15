@@ -5,10 +5,10 @@ AI flags for denial), identifies missing supporting documentation, and surfaces
 denial-risk flags — the "AI/LLM Analysis of Notes → Suggested Additions or
 Fixes → Coding Assistant" flow from the architecture diagram.
 """
-import os
-
-from app.services.ai_engine import AIEngineUnavailable
+from app.llm import AIEngineUnavailable, get_structured_llm, invoke_structured
 from app.schemas import NoteAnalysis
+
+__all__ = ["AIEngineUnavailable", "analyze_note"]
 
 _SYSTEM_PROMPT = """\
 You are an AI coding assistant embedded in a healthcare Revenue Cycle \
@@ -54,28 +54,20 @@ def analyze_note(
     author_role: str,
     content: str,
 ) -> NoteAnalysis:
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        raise AIEngineUnavailable(
-            "ANTHROPIC_API_KEY is not configured — AI note analysis is unavailable."
-        )
-
-    from langchain_anthropic import ChatAnthropic
     from langchain_core.prompts import ChatPromptTemplate
 
-    llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0, api_key=api_key)
-    structured_llm = llm.with_structured_output(NoteAnalysis)
-
+    structured_llm = get_structured_llm(NoteAnalysis)
     prompt = ChatPromptTemplate.from_messages(
         [("system", _SYSTEM_PROMPT), ("user", _USER_TEMPLATE)]
     )
     chain = prompt | structured_llm
 
-    return chain.invoke(
+    return invoke_structured(
+        chain,
         {
             "patient_id": patient_id,
             "note_type": note_type,
             "author_role": author_role,
             "content": content,
-        }
+        },
     )

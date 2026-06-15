@@ -1,16 +1,18 @@
 """AI rule-engine for Brick 1 (intake/eligibility).
 
-Uses an LLM (Claude, via langchain-anthropic) with structured output so the
-response is a typed Pydantic object rather than free text — mirroring the
-"AI Rules Engine -> Real-time Alerting UI" flow in the architecture doc.
+Uses an OpenAI-compatible LLM (via the shared app.llm factory → FreeLLMAPI) with
+structured output so the response is a typed Pydantic object rather than free
+text — mirroring the "AI Rules Engine -> Real-time Alerting UI" flow in the
+architecture doc.
 
-Requires ANTHROPIC_API_KEY. If it isn't set, analyze_intake() raises
-AIEngineUnavailable so callers can degrade gracefully instead of crashing.
+If the LLM backend isn't configured (or a request fails), analyze_intake()
+raises AIEngineUnavailable so callers can degrade gracefully instead of crashing.
 """
-import os
-
+from app.llm import AIEngineUnavailable, get_structured_llm, invoke_structured
 from app.models import CareSetting, EligibilityStatus, InsuranceInfo, Patient
 from app.schemas import AIAnalysis
+
+__all__ = ["AIEngineUnavailable", "analyze_intake"]
 
 _SYSTEM_PROMPT = """\
 You are an AI rules engine embedded in a healthcare Revenue Cycle Management \
@@ -57,26 +59,10 @@ Review this intake and return your structured analysis.
 """
 
 
-class AIEngineUnavailable(RuntimeError):
-    pass
-
-
 def _build_chain():
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        raise AIEngineUnavailable(
-            "ANTHROPIC_API_KEY is not configured — AI analysis is unavailable. "
-            "Set it in your .env file to enable AI-driven intake review."
-        )
-
-    # Imported lazily so the module can be imported (e.g. for type checking)
-    # even when langchain-anthropic isn't installed in some environments.
-    from langchain_anthropic import ChatAnthropic
     from langchain_core.prompts import ChatPromptTemplate
 
-    llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0, api_key=api_key)
-    structured_llm = llm.with_structured_output(AIAnalysis)
-
+    structured_llm = get_structured_llm(AIAnalysis)
     prompt = ChatPromptTemplate.from_messages(
         [("system", _SYSTEM_PROMPT), ("user", _USER_TEMPLATE)]
     )
@@ -96,7 +82,8 @@ def analyze_intake(
 ) -> AIAnalysis:
     chain = _build_chain()
 
-    return chain.invoke(
+    return invoke_structured(
+        chain,
         {
             "first_name": patient.first_name,
             "last_name": patient.last_name,

@@ -41,7 +41,13 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://rcm:rcm_dev_password@postgres:5432/rcm}
       MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
       MONGO_DB: ${MONGO_DB:-rcm}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # AI via an OpenAI-compatible endpoint (FreeLLMAPI proxy on the host).
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:3001/v1}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-auto}
+    extra_hosts:
+      # Lets the container reach FreeLLMAPI running on the host (portable to Linux).
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
     volumes:

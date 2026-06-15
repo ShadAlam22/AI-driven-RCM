@@ -38,13 +38,29 @@ export default function PatientList() {
                 <td>{p.insurance?.plan_type ?? '—'}</td>
                 <td style={{ fontFamily: 'monospace' }}>{p.insurance?.member_id ?? '—'}</td>
                 <td>
-                  <button
-                    className="btn btn-ghost"
-                    style={{ padding: '4px 12px' }}
-                    onClick={() => navigate(`/patients/${p.id}/eligibility`)}
-                  >
-                    Eligibility & Alerts
-                  </button>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: '4px 12px' }}
+                      onClick={() => navigate(`/patients/${p.id}/eligibility`)}
+                    >
+                      Eligibility & Alerts
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: '4px 12px' }}
+                      onClick={() => navigate(`/patients/${p.id}/notes`)}
+                    >
+                      Notes & Coding
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ padding: '4px 12px' }}
+                      onClick={() => navigate(`/patients/${p.id}/claims`)}
+                    >
+                      Claims
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

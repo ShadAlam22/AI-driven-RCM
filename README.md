@@ -13,15 +13,39 @@ loop. Claude (via LangChain) provides the AI across all three bricks.
 | Backend | FastAPI + Python 3.12 |
 | Relational DB | PostgreSQL 16 (SQLAlchemy 2.0 ORM) — patients, claims, denials, alerts |
 | Document DB | MongoDB 7 — unstructured clinical notes |
-| AI engine | LangChain + Claude (claude-sonnet-4-6) via `langchain-anthropic`, structured output |
+| AI engine | LangChain + any OpenAI-compatible endpoint (`langchain-openai`), structured output via tool calling |
+| LLM access | [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi) proxy — aggregates free provider tiers behind one unified key (no paid key needed) |
 | Orchestration | Docker Compose |
+
+## AI backend (no paid key required)
+
+The platform calls an **OpenAI-compatible** `/v1` endpoint, configured via three
+env vars (`LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`). By default it points at a
+local **FreeLLMAPI** proxy, which aggregates the free tiers of ~16 LLM providers
+(including keyless/anonymous ones like Pollinations, OVH, Kilo) behind a single
+unified key — so the AI works without an Anthropic or OpenAI key.
+
+Setup is a one-time thing:
+
+```bash
+# In the freellmapi repo:
+printf "ENCRYPTION_KEY=%s\nPORT=3001\nHOST_BIND=0.0.0.0\n" "$(openssl rand -hex 32)" > .env
+docker compose up -d
+# Open http://localhost:3001 → create an account → (optional) add free provider
+# keys, or just enable a keyless provider (OVH / Pollinations / Kilo) on the Keys
+# page → copy the unified `freellmapi-...` key.
+```
+
+Then put that key in RCM's `.env` as `LLM_API_KEY`. To use a real provider
+instead (Anthropic, OpenAI, etc.), just set `LLM_BASE_URL` / `LLM_API_KEY` /
+`LLM_MODEL` to that provider — nothing else changes.
 
 ## Quick start
 
 ```bash
-# 1. Copy env file and add your Anthropic key (required for AI features)
+# 1. Copy env file; set LLM_API_KEY to your FreeLLMAPI unified key (see above)
 cp .env.example .env
-# Edit .env and set ANTHROPIC_API_KEY=sk-ant-...
+# Edit .env: LLM_API_KEY=freellmapi-...
 
 # 2. Build and run
 docker compose up --build
@@ -32,9 +56,11 @@ docker compose up --build
 ```
 
 Both database schemas initialize automatically on first backend startup.
-**The app runs without an Anthropic key** — AI endpoints return a clear
-"unavailable" message (HTTP 503) instead of crashing, so you can explore the
-data flow first and add the key later (`docker compose restart backend`).
+**The app runs without an LLM key** — AI endpoints return a clear "unavailable"
+message (HTTP 503) instead of crashing, so you can explore the data flow first
+and add the key later (`docker compose restart backend`). Free provider tiers
+can be briefly rate-limited; the AI services treat that as a graceful
+"unavailable" rather than an error, so just retry.
 
 ## The Three Bricks
 
@@ -83,7 +109,7 @@ data flow first and add the key later (`docker compose restart backend`).
 |-----------|--------|-------|
 | Patient / claim / denial persistence | Real | PostgreSQL |
 | Clinical note storage | Real | MongoDB |
-| AI (intake review, coding, denial parsing, risk) | Real (needs API key) | Claude + structured output |
+| AI (intake review, coding, denial parsing, risk) | Real (needs LLM key) | OpenAI-compatible endpoint (FreeLLMAPI by default) + structured output |
 | Insurance eligibility check | **Mocked** | `services/mock_payer.py` — deterministic by member ID. Replace with a clearinghouse (Availity, Change Healthcare; X12 270/271). |
 | Payer denial responses | **Simulated** | Triggered manually via "Simulate Payer Denial". In production these arrive as X12 835 remittances. |
 | Denial retrieval (learning loop) | Real (structured) | `retrieve_similar_denials()` queries by CPT/payer/ICD/setting. Upgrade path: swap for FAISS / pgvector semantic search — the AI prompt already consumes a generic list of retrieved denials. |
@@ -99,6 +125,7 @@ backend/app/
 ├── models.py                ORM: Patient, Insurance, Eligibility, PriorAuth,
 │                            Alert, Claim, Denial
 ├── schemas.py               Pydantic request/response + AI structured-output models
+├── llm.py                   Central OpenAI-compatible LLM factory (FreeLLMAPI), graceful-degradation helper
 ├── routers/
 │   ├── patients.py          Registration + insurance
 │   ├── eligibility.py       Mock payer check + Brick 1 AI analysis
@@ -110,9 +137,9 @@ backend/app/
 │   └── denials.py           Denial log + pattern analytics
 └── services/
     ├── mock_payer.py        Simulated eligibility responses
-    ├── ai_engine.py         Brick 1 intake rule engine (Claude)
-    ├── note_analyzer.py     Brick 2 note analysis (Claude)
-    └── denial_engine.py     Brick 3 denial parser + risk assessor (Claude)
+    ├── ai_engine.py         Brick 1 intake rule engine
+    ├── note_analyzer.py     Brick 2 note analysis
+    └── denial_engine.py     Brick 3 denial parser + risk assessor
 
 frontend/src/
 ├── App.jsx                  Layout, sidebar nav, routes
